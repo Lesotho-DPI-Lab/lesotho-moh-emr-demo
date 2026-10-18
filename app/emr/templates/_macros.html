@@ -1,0 +1,23 @@
+{% macro status_tag(child) -%}
+{% set cls, label = STATUS_LABELS[child.verification_status] %}
+<span class="tag {{ cls }}">{% if child.verification_status == 'VERIFIED' %}✔ {% endif %}{{ label }}{% if child.verification_reason and child.verification_status != 'VERIFIED' %} · {{ child.verification_reason }}{% endif %}</span>
+{%- endmacro %}
+
+{% macro outcome(code, reason=None) -%}
+{% if code == 'VERIFIED' %}<span class="tag ok">✔ Verified</span>
+{% elif code == 'PENDING' %}<span class="tag warn">Pending{% if reason %} · {{ reason }}{% endif %}</span>
+{% elif code == 'ERROR' %}<span class="tag warn">Error{% if reason %} · {{ reason }}{% endif %}</span>
+{% elif code == 'DECLINED' %}<span class="tag bad" {% if reason in REASON_CODES %}title="{{ REASON_CODES[reason].meaning }}"{% endif %}>Declined{% if reason %} · {{ reason }}{% if reason in REASON_CODES %} {{ REASON_CODES[reason].name|human }}{% endif %}{% endif %}</span>
+{% else %}<span class="tag">{{ code }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro field(name, label, values, errors, type="text", hint=None, required=False, attrs="") -%}
+<label>{{ label }}{% if hint %} <span class="hint">{{ hint }}</span>{% endif %}
+  <input name="{{ name }}" type="{{ type }}" value="{{ values.get(name) if values.get(name) is not none else '' }}" {% if required %}required{% endif %} {{ attrs|safe }} {% if errors.get(name) %}aria-invalid="true"{% endif %}>
+  {% if errors.get(name) %}<span class="field-error">{{ errors[name] }}</span>{% endif %}
+</label>
+{%- endmacro %}
+
+{% macro flag(result) -%}
+{% if result %}<span class="tag {{ result[0] }}">{{ result[1] }}</span>{% endif %}
+{%- endmacro %}

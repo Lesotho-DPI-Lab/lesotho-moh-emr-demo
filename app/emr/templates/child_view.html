@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_tag, outcome %}
+{% block title %}{{ child.full_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ child.full_name }} {{ status_tag(child) }}</h1>
+    <p><span class="mono">{{ child.emr_number }}</span> · {{ SEXES[child.sex] }} · born {{ child.date_of_birth|nicedate }} · {{ child.age_text() }}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="/children/{{ child.emr_number }}/visits/new?type=WELL_CHILD">Well-child visit</a>
+    <a class="btn secondary" href="/children/{{ child.emr_number }}/visits/new?type=SICK_CHILD">Sick visit</a>
+    <a class="btn secondary" href="/children/{{ child.emr_number }}/visits/new?type=IMMUNISATION">Immunisation</a>
+    <a class="btn secondary" href="/children/{{ child.emr_number }}/edit">Edit</a>
+  </div>
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <h2>Child and guardian</h2>
+    <dl class="fields">
+      <dt>Birth weight</dt><dd>{{ '%g kg'|format(child.birth_weight_kg) if child.birth_weight_kg else '—' }}</dd>
+      <dt>Guardian</dt><dd>{{ child.guardian_name or '—' }}{% if child.guardian_relationship %} <span class="muted">({{ child.guardian_relationship|human }})</span>{% endif %}</dd>
+      <dt>Phone</dt><dd>{{ child.guardian_phone or '—' }}</dd>
+      <dt>Address</dt><dd>{{ child.village or '' }}{% if child.district %}{% if child.village %}, {% endif %}{{ DISTRICTS[child.district] }}{% endif %}{% if not child.village and not child.district %}—{% endif %}</dd>
+      <dt>Registered</dt><dd>{{ child.created_at|localtime }} by {{ child.created_by }}</dd>
+      <dt>Facility</dt><dd>{{ child.facility or '—' }}</dd>
+    </dl>
+  </div>
+
+  <div class="card identity {{ STATUS_LABELS[child.verification_status][0] }}" id="identity">
+    <h2>Home Affairs identity</h2>
+    <dl class="fields">
+      <dt>Status</dt><dd>{{ status_tag(child) }}</dd>
+      <dt>Birth registration no.</dt><dd class="mono">{{ child.birth_registration_number or '—' }}</dd>
+      <dt>National ID</dt><dd class="mono">{{ child.national_id or '—' }}</dd>
+      {% if child.is_verified %}
+      <dt>Verified</dt><dd>{{ child.verified_at|localtime }} by {{ child.verified_by }}</dd>
+      <dt>Consent reference</dt><dd class="mono">{{ child.consent_reference }}</dd>
+      <dt>X-Road message</dt><dd class="mono small">{{ last.xroad_id if last else '—' }}</dd>
+      {% endif %}
+    </dl>
+
+    {% if last and not child.is_verified %}
+    {% set rc = REASON_CODES.get(last.reason_code) %}
+    <div class="remedy">
+      <strong>Last check {{ last.requested_at|localtime }}: {{ outcome(last.outcome, last.reason_code) }}</strong>
+      {% if rc %}
+      <p>{{ rc.meaning }}.</p>
+      <p><strong>What to do:</strong> {{ rc.remedy_en }}</p>
+      <p lang="st" class="muted"><strong>Seo u lokelang ho se etsa:</strong> {{ rc.remedy_st }}</p>
+      {% elif last.message %}<p class="small">{{ last.message }}</p>{% endif %}
+    </div>
+    {% endif %}
+
+    {% if not child.is_verified %}
+    <form method="post" action="/children/{{ child.emr_number }}/verify" class="link-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <h3>{% if child.verification_status == 'PENDING' %}Retry verification{% elif last %}Verify again{% else %}Link to civil registry{% endif %}</h3>
+      <div class="form-grid">
+        <label>Birth registration number<input name="birth_registration_number" value="{{ child.birth_registration_number or '' }}" placeholder="B-MSU-2025-000001"></label>
+        <label>National ID<input name="national_id" value="{{ child.national_id or '' }}" inputmode="numeric" placeholder="12 digits"></label>
+      </div>
+      <label class="check"><input type="checkbox" name="guardian_consent" required> The guardian consents to verification with the Ministry of Home Affairs.</label>
+      <label>Consent reference <span class="hint">optional; generated when left empty</span><input name="consent_reference"></label>
+      <button>Verify with Home Affairs</button>
+      <p class="small muted">Checks the names and date of birth on this record against the civil registry over the Lesotho Exchange (X-Road). On success the registry's details replace those typed here.</p>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" id="immunisations">
+  <h2>Immunisations</h2>
+  <p class="small muted">Illustrative EPI schedule for the demo; confirm against the current MoH schedule.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Vaccine</th><th>Contact</th><th>Due</th><th>Status</th><th></th></tr></thead>
+    <tbody>{% for r in schedule %}
+    <tr>
+      <td>{{ r.vaccine.name }}</td><td>{{ r.vaccine.contact }}</td><td>{{ r.due|nicedate }}</td>
+      <td>{% if r.state == 'GIVEN' %}<span class="tag ok">Given {{ r.given|nicedate }}</span>{% elif r.state == 'OVERDUE' %}<span class="tag bad">Overdue</span>{% elif r.state == 'DUE' %}<span class="tag warn">Due</span>{% else %}<span class="tag">Upcoming</span>{% endif %}</td>
+      <td>{% if r.state in ('DUE', 'OVERDUE') %}
+        <form method="post" action="/children/{{ child.emr_number }}/immunisations" class="row-form">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="vaccine" value="{{ r.vaccine.key }}">
+          <input type="date" name="date_given" value="{{ today().isoformat() }}" max="{{ today().isoformat() }}" aria-label="Date given">
+          <input name="batch_number" placeholder="Batch" aria-label="Batch number">
+          <button class="secondary small-btn">Record</button>
+        </form>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+
+<div class="card">
+  <h2>Growth</h2>
+  {% if growth %}
+  <svg class="chart" viewBox="0 0 {{ growth.w }} {{ growth.h }}" role="img" aria-label="Weight for age">
+    {% for t in growth.yticks %}<line x1="{{ growth.pad }}" x2="{{ growth.w - growth.pad }}" y1="{{ t.y }}" y2="{{ t.y }}" class="grid"/><text x="{{ growth.pad - 6 }}" y="{{ t.y + 4 }}" text-anchor="end">{{ t.label }}</text>{% endfor %}
+    {% for t in growth.xticks %}<text x="{{ t.x }}" y="{{ growth.h - growth.pad + 16 }}" text-anchor="middle">{{ t.label }}</text>{% endfor %}
+    <text x="{{ growth.w / 2 }}" y="{{ growth.h - 4 }}" text-anchor="middle" class="axis-label">age (months)</text>
+    <text x="10" y="{{ growth.pad - 12 }}" class="axis-label">kg</text>
+    <polyline points="{{ growth.line }}" class="series"/>
+    {% for d in growth.dots %}<circle cx="{{ d.x }}" cy="{{ d.y }}" r="4" class="dot"><title>{{ d.label }}</title></circle>{% endfor %}
+  </svg>
+  {% else %}<p class="muted">Weight from at least two visits (or birth weight and one visit) draws the growth curve.</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2>Visits</h2>
+  {% if child.visits %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Type</th><th>Weight</th><th>Length/height</th><th>MUAC</th><th>Temp.</th><th>By</th></tr></thead>
+    <tbody>{% for v in child.visits %}
+    <tr>
+      <td><a href="/children/{{ child.emr_number }}/visits/{{ v.id }}">{{ v.visit_date|nicedate }}</a></td>
+      <td>{{ VISIT_TYPES[v.visit_type] }}{% if v.danger_sign_list %} <span class="tag bad">Danger signs</span>{% endif %}{% if v.referred %} <span class="tag warn">Referred</span>{% endif %}</td>
+      <td>{{ '%g kg'|format(v.weight_kg) if v.weight_kg else '' }}</td>
+      <td>{{ '%g cm'|format(v.height_cm) if v.height_cm else '' }}</td>
+      <td>{{ '%g cm'|format(v.muac_cm) if v.muac_cm else '' }}</td>
+      <td>{{ '%g °C'|format(v.temperature_c) if v.temperature_c else '' }}</td>
+      <td>{{ v.created_by }}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted">No visits yet.</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2>Verification history</h2>
+  <p class="small muted">Every check with the civil registry over X-Road. The X-Road message id matches the moh-ss message log and the registry's "who accessed this record".</p>
+  {% if child.verifications %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>Trigger</th><th>By</th><th>Identifier</th><th>Consent ref.</th><th>Outcome</th><th>X-Road message id</th><th>Time</th></tr></thead>
+    <tbody>{% for a in child.verifications %}
+    <tr>
+      <td>{{ a.requested_at|localtime }}</td><td>{{ a.trigger|human }}</td><td>{{ a.requested_by }}</td>
+      <td>{{ 'Birth reg. no.' if a.identifier_type == 'registrationNumber' else 'National ID' }}</td>
+      <td class="mono small">{{ a.consent_reference }}</td>
+      <td>{{ outcome(a.outcome, a.reason_code) }}{% if a.outcome in ('ERROR', 'PENDING') and a.message %}<div class="small muted">{{ a.message }}</div>{% endif %}</td>
+      <td class="mono small">{{ a.xroad_id or '—' }}</td>
+      <td class="small">{{ a.duration_ms ~ ' ms' if a.duration_ms is not none else '' }}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted">Never checked with Home Affairs.</p>{% endif %}
+</div>
+{% endblock %}

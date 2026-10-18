@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field, status_tag %}
+{% block title %}New visit · {{ child.full_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>New visit</h1>
+    <p><a href="/children/{{ child.emr_number }}">{{ child.full_name }}</a> · {{ child.age_text() }} · {{ status_tag(child) }}</p>
+  </div>
+</div>
+{% if errors %}<div class="error-box">Please correct the highlighted fields.{% if errors.vaccines %} {{ errors.vaccines }}{% endif %}</div>{% endif %}
+<form method="post" action="/children/{{ child.emr_number }}/visits" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <fieldset>
+    <legend>Visit</legend>
+    <div class="form-grid">
+      <label>Type
+        <select name="visit_type" required>
+          {% for k, v in VISIT_TYPES.items() %}<option value="{{ k }}" {% if values.get('visit_type') == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+      {{ field("visit_date", "Date", {"visit_date": values.get("visit_date") or today().isoformat()}, errors, "date", attrs='max="' ~ today().isoformat() ~ '"') }}
+    </div>
+    <label>Presenting complaint / reason<textarea name="complaint" rows="2">{{ values.get('complaint') or '' }}</textarea></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Observations</legend>
+    <div class="form-grid">
+      {{ field("weight_kg", "Weight (kg)", values, errors, "number", attrs='step="0.01"') }}
+      {{ field("height_cm", "Length / height (cm)", values, errors, "number", attrs='step="0.1"') }}
+      {{ field("muac_cm", "MUAC (cm)", values, errors, "number", hint="6–59 months", attrs='step="0.1"') }}
+      {{ field("head_circumference_cm", "Head circumference (cm)", values, errors, "number", attrs='step="0.1"') }}
+      {{ field("temperature_c", "Temperature (°C)", values, errors, "number", attrs='step="0.1"') }}
+      {{ field("respiratory_rate", "Respiratory rate (/min)", values, errors, "number") }}
+      <label>Feeding
+        <select name="feeding">
+          <option value="">—</option>
+          {% for f in ['EXCLUSIVE_BREASTFEEDING', 'MIXED_FEEDING', 'REPLACEMENT_FEEDING', 'COMPLEMENTARY_FOODS', 'FAMILY_DIET'] %}
+          <option value="{{ f }}" {% if values.get('feeding') == f %}selected{% endif %}>{{ f|human }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+    <p class="small"><strong>General danger signs</strong> <span class="muted">(any one: refer urgently)</span></p>
+    <div class="checks">
+      {% for k, v in DANGER_SIGNS.items() %}<label class="check"><input type="checkbox" name="danger_signs" value="{{ k }}" {% if k in (values.get('danger_signs') or []) %}checked{% endif %}> {{ v }}</label>{% endfor %}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Immunisations and supplements given today</legend>
+    {% if due %}
+    <div class="table-wrap"><table>
+      <thead><tr><th></th><th>Vaccine</th><th>Due</th><th>Batch number</th></tr></thead>
+      <tbody>{% for r in due %}
+      <tr>
+        <td><input type="checkbox" name="vaccines" value="{{ r.vaccine.key }}" aria-label="Given: {{ r.vaccine.name }}" {% if r.vaccine.key in (chosen or []) %}checked{% endif %}></td>
+        <td>{{ r.vaccine.name }} {% if r.state == 'OVERDUE' %}<span class="tag bad">Overdue</span>{% endif %}</td>
+        <td>{{ r.due|nicedate }}</td>
+        <td><input name="batch_{{ r.vaccine.key }}" value="{{ values.get('batch_' ~ r.vaccine.key) or '' }}" aria-label="Batch number for {{ r.vaccine.name }}"></td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="muted small">No vaccines due today.</p>{% endif %}
+    <div class="checks">
+      <label class="check"><input type="checkbox" name="vitamin_a_given" {% if values.get('vitamin_a_given') %}checked{% endif %}> Vitamin A given</label>
+      <label class="check"><input type="checkbox" name="deworming_given" {% if values.get('deworming_given') %}checked{% endif %}> Deworming given</label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Assessment and plan</legend>
+    <label>Assessment / classification<textarea name="assessment" rows="2">{{ values.get('assessment') or '' }}</textarea></label>
+    <label>Plan / treatment / counselling<textarea name="plan" rows="2">{{ values.get('plan') or '' }}</textarea></label>
+    <div class="form-grid">
+      <label class="check"><input type="checkbox" name="referred" {% if values.get('referred') %}checked{% endif %}> Referred</label>
+      {{ field("next_visit_date", "Next visit", values, errors, "date") }}
+    </div>
+  </fieldset>
+  <div class="actions">
+    <button>Save visit</button>
+    <a class="btn secondary" href="/children/{{ child.emr_number }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

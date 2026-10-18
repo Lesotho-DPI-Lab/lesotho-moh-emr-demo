@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Error{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{% if code == 404 %}Not found{% elif code == 403 %}Not allowed{% else %}Something went wrong{% endif %}</h1>
+  <p>{{ message }}</p>
+  <p><a href="/">Back to the dashboard</a></p>
+</div>
+{% endblock %}

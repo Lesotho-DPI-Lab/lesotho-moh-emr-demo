@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_tag %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Dumela, {{ user.full_name.split(' ')[0] }}</h1>
+    <p>{{ settings.facility }} · {{ today()|nicedate }}</p>
+  </div>
+  <div class="actions"><a class="btn" href="/children/new">Register a child</a></div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="n">{{ stats.children }}</div><div class="l">Children on record</div></div>
+  <div class="stat"><div class="n">{{ stats.verified }}</div><div class="l">Verified with Home Affairs</div></div>
+  <div class="stat"><div class="n">{{ stats.not_verified }}</div><div class="l">Not yet verified</div></div>
+  <div class="stat"><div class="n">{{ stats.pending }}</div><div class="l">Verification pending</div></div>
+  <div class="stat"><div class="n">{{ stats.visits_today }}</div><div class="l">Visits today</div></div>
+</div>
+
+{% if pending %}
+<div class="card callout-warn">
+  <div class="page-head" style="margin-bottom:8px">
+    <h2>Verification pending</h2>
+    <form method="post" action="/verifications/retry" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><button class="secondary">Retry now</button>
+    </form>
+  </div>
+  <p class="small muted">The civil registry or X-Road could not be reached (RC-06). Care continues; the EMR retries automatically.</p>
+  <ul class="plain">{% for c in pending %}<li><a href="/children/{{ c.emr_number }}">{{ c.full_name }}</a> <span class="mono small muted">{{ c.emr_number }}</span></li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="grid two">
+  <div class="card">
+    <h2>Recently registered</h2>
+    {% if recent %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Child</th><th>Age</th><th>Identity</th></tr></thead>
+      <tbody>{% for c in recent %}
+      <tr><td><a href="/children/{{ c.emr_number }}">{{ c.full_name }}</a><div class="mono small muted">{{ c.emr_number }}</div></td>
+          <td>{{ c.age_text() }}</td><td>{{ status_tag(c) }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="muted">No children registered yet.</p>{% endif %}
+  </div>
+  <div class="card">
+    <h2>Return visits this week</h2>
+    {% if due_visits %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Child</th><th>Last visit</th></tr></thead>
+      <tbody>{% for v in due_visits %}
+      <tr><td>{{ v.next_visit_date|nicedate }}</td>
+          <td><a href="/children/{{ v.child.emr_number }}">{{ v.child.full_name }}</a></td>
+          <td>{{ VISIT_TYPES[v.visit_type] }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="muted">No return visits booked for the next 7 days.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

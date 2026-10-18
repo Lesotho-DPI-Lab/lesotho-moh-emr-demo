@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}{% if child %}Edit {{ child.full_name }}{% else %}Register a child{% endif %}{% endblock %}
+{% block content %}
+{% set locked = child and child.is_verified %}
+<div class="page-head">
+  <div>
+    <h1>{% if child %}Edit {{ child.full_name }}{% else %}Register a child{% endif %}</h1>
+    <p>{% if locked %}Identity is verified with Home Affairs: names, date of birth, sex and identifiers are locked.{% else %}A Home Affairs identifier is optional. When given with the guardian's consent, it is verified with the civil registry over X-Road.{% endif %}</p>
+  </div>
+</div>
+{% if errors %}<div class="error-box">Please correct the highlighted fields.</div>{% endif %}
+<form method="post" action="{% if child %}/children/{{ child.emr_number }}/edit{% else %}/children{% endif %}" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <fieldset>
+    <legend>Child</legend>
+    {% if locked %}
+    <dl class="fields">
+      <dt>Name</dt><dd>{{ child.full_name }} <span class="tag ok">✔ Verified</span></dd>
+      <dt>Sex</dt><dd>{{ SEXES[child.sex] }}</dd>
+      <dt>Date of birth</dt><dd>{{ child.date_of_birth|nicedate }}</dd>
+    </dl>
+    <div class="form-grid" style="margin-top:12px">
+      {{ field("birth_weight_kg", "Birth weight (kg)", values, errors, "number", attrs='step="0.01" min="0.4" max="7"') }}
+    </div>
+    {% else %}
+    <div class="form-grid">
+      {{ field("first_name", "First name(s)", values, errors, required=True) }}
+      {{ field("surname", "Surname", values, errors, required=True) }}
+      <label>Sex
+        <select name="sex" required {% if errors.sex %}aria-invalid="true"{% endif %}>
+          <option value="">Choose</option>
+          {% for k, v in SEXES.items() %}<option value="{{ k }}" {% if values.get('sex') == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+        </select>
+        {% if errors.sex %}<span class="field-error">{{ errors.sex }}</span>{% endif %}
+      </label>
+      {{ field("date_of_birth", "Date of birth", values, errors, "date", required=True, attrs='max="' ~ today().isoformat() ~ '"') }}
+      {{ field("birth_weight_kg", "Birth weight (kg)", values, errors, "number", attrs='step="0.01" min="0.4" max="7"') }}
+    </div>
+    {% endif %}
+  </fieldset>
+
+  <fieldset>
+    <legend>Guardian and address</legend>
+    <div class="form-grid">
+      {{ field("guardian_name", "Guardian's name", values, errors) }}
+      <label>Relationship
+        <select name="guardian_relationship">
+          <option value="">Choose</option>
+          {% for r in GUARDIAN_RELATIONSHIPS %}<option value="{{ r }}" {% if values.get('guardian_relationship') == r %}selected{% endif %}>{{ r|human }}</option>{% endfor %}
+        </select>
+      </label>
+      {{ field("guardian_phone", "Guardian's phone", values, errors, "tel") }}
+      <label>District
+        <select name="district">
+          <option value="">Choose</option>
+          {% for k, v in DISTRICTS.items() %}<option value="{{ k }}" {% if values.get('district') == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+      {{ field("village", "Village / town", values, errors) }}
+    </div>
+  </fieldset>
+
+  {% if not locked %}
+  <fieldset>
+    <legend>Home Affairs identity (optional)</legend>
+    <p class="small muted">From the birth certificate. Give either; the birth registration number is preferred.</p>
+    <div class="form-grid">
+      {{ field("birth_registration_number", "Birth registration number", values, errors, hint="e.g. B-MSU-2025-000001", attrs='autocapitalize="characters"') }}
+      {{ field("national_id", "National ID", values, errors, hint="12 digits", attrs='inputmode="numeric"') }}
+    </div>
+    {% if not child %}
+    <div class="consent">
+      <label class="check"><input type="checkbox" name="guardian_consent" {% if values.get('guardian_consent') == 'on' %}checked{% endif %}>
+        The guardian consents to this child's identity being verified with the Ministry of Home Affairs civil registry.</label>
+      {{ field("consent_reference", "Consent reference", values, errors, hint="optional; generated when left empty") }}
+    </div>
+    {% else %}
+    <p class="small muted">To verify after changing an identifier, use <em>Verify with Home Affairs</em> on the child's record.</p>
+    {% endif %}
+  </fieldset>
+  {% endif %}
+
+  <div class="actions">
+    <button>{% if child %}Save changes{% else %}Register child{% endif %}</button>
+    <a class="btn secondary" href="{% if child %}/children/{{ child.emr_number }}{% else %}/children{% endif %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

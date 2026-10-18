@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}X-Road{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>X-Road connection</h1><p>How this EMR reaches the Ministry of Home Affairs civil registry over the Lesotho Exchange.</p></div>
+</div>
+<div class="grid two">
+  <div class="card">
+    <h2>Configuration</h2>
+    <dl class="fields">
+      <dt>Security server</dt><dd class="mono">{{ settings.xroad_ss_url }}</dd>
+      <dt>Client (this EMR)</dt><dd class="mono">{{ settings.xroad_client }}</dd>
+      <dt>Service</dt><dd class="mono">{{ settings.xroad_service }}</dd>
+      <dt>Purpose</dt><dd class="mono">{{ settings.xroad_purpose }}</dd>
+      <dt>Client certificate</dt><dd>{{ 'configured' if settings.xroad_client_cert else 'none' }}</dd>
+      <dt>Security server certificate</dt><dd>{{ 'pinned' if settings.xroad_ss_cert else 'not pinned' }}</dd>
+      <dt>Timeout</dt><dd>{{ settings.xroad_timeout|int }} s</dd>
+      <dt>Automatic retry</dt><dd>{% if settings.retry_interval %}every {{ settings.retry_interval // 60 }} min{% else %}off{% endif %}</dd>
+    </dl>
+  </div>
+  <div class="card">
+    <h2>Check connection</h2>
+    <p class="small muted">Asks moh-ss which civil registry services this client may call (<span class="mono">allowedMethods</span> metaservice). No child data is sent.</p>
+    <form method="post" action="/xroad"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Check now</button></form>
+    {% if check %}
+    <div class="{{ 'flash ok' if check.ok else 'error-box' }}" style="margin-top:14px">
+      {% if check.ok %}
+      Connected in {{ check.elapsed_ms }} ms. Allowed services: <strong class="mono">{{ check.services|join(', ') or 'none' }}</strong>
+      {% else %}
+      Not connected{% if check.status %} (HTTP {{ check.status }}){% endif %}: <span class="mono">{{ check.error }}</span>{% if check.detail %}<div class="small">{{ check.detail }}</div>{% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

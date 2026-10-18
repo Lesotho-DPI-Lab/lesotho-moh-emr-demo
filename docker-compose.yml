@@ -1,0 +1,50 @@
+# MoH child EMR demonstrator. Secrets come from .env (see scripts/init-env.sh).
+# Only nginx publishes ports; the app and database are on the internal network.
+# The app calls moh-ss (X-Road consumer interface) with its own client certificate.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: emr
+      POSTGRES_USER: emr
+      POSTGRES_PASSWORD: ${EMR_DB_PASSWORD:?run scripts/init-env.sh first}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U emr -d emr"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: ./app
+    image: moh-child-emr:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      EMR_DATABASE_URL: postgresql+psycopg://emr:${EMR_DB_PASSWORD}@db:5432/emr
+      EMR_XROAD_CLIENT_CERT: /certs/xroad/client.crt
+      EMR_XROAD_CLIENT_KEY: /certs/xroad/client.key
+      EMR_XROAD_SS_CERT: /certs/xroad/moh-ss.crt
+    volumes:
+      - ./certs/xroad:/certs/xroad:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs/server.crt:/etc/nginx/certs/server.crt:ro
+      - ./certs/server.key:/etc/nginx/certs/server.key:ro
+    depends_on:
+      - app
+
+volumes:
+  pgdata:

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import outcome %}
+{% block title %}Verification log{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Verification log</h1><p>Every identity check sent to the civil registry over X-Road. Search by X-Road message id to reconcile with the moh-ss message log.</p></div>
+</div>
+<form class="search" method="get" action="/verifications">
+  <input name="q" value="{{ q }}" placeholder="X-Road message id, consent reference or user" aria-label="Search">
+  <button class="secondary">Search</button>
+</form>
+<div class="card" style="margin-top:16px">
+  {% if rows %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>Child</th><th>Trigger</th><th>Nurse</th><th>Consent ref.</th><th>Outcome</th><th>X-Road message id</th><th>HTTP</th><th>Time</th></tr></thead>
+    <tbody>{% for a in rows %}
+    <tr>
+      <td>{{ a.requested_at|localtime }}</td>
+      <td><a href="/children/{{ a.child.emr_number }}">{{ a.child.emr_number }}</a></td>
+      <td>{{ a.trigger|human }}</td><td>{{ a.requested_by }}</td>
+      <td class="mono small">{{ a.consent_reference }}</td>
+      <td>{{ outcome(a.outcome, a.reason_code) }}{% if a.outcome in ('ERROR', 'PENDING') and a.message %}<div class="small muted">{{ a.message }}</div>{% endif %}</td>
+      <td class="mono small">{{ a.xroad_id or '—' }}</td>
+      <td>{{ a.http_status or '' }}</td>
+      <td class="small">{{ a.duration_ms ~ ' ms' if a.duration_ms is not none else '' }}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted">No verifications{% if q %} match{% endif %}.</p>{% endif %}
+</div>
+{% endblock %}

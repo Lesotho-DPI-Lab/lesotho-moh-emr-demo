@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_tag %}
+{% block title %}Children{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Children</h1><p>Search by name, EMR number, birth registration number, national ID or guardian.</p></div>
+  <a class="btn" href="/children/new">Register a child</a>
+</div>
+<form class="search" method="get" action="/children">
+  <input name="q" value="{{ q }}" placeholder="Search" aria-label="Search">
+  <select name="status" aria-label="Identity status">
+    <option value="">Any identity status</option>
+    {% for s in STATUS_LABELS %}<option value="{{ s }}" {% if s == status %}selected{% endif %}>{{ s|human }}</option>{% endfor %}
+  </select>
+  <button class="secondary">Search</button>
+</form>
+<div class="card" style="margin-top:16px">
+  {% if rows %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>EMR number</th><th>Child</th><th>Sex</th><th>Date of birth</th><th>Guardian</th><th>Identity</th></tr></thead>
+    <tbody>{% for c in rows %}
+    <tr>
+      <td class="mono"><a href="/children/{{ c.emr_number }}">{{ c.emr_number }}</a></td>
+      <td>{{ c.full_name }}</td>
+      <td>{{ SEXES[c.sex] }}</td>
+      <td>{{ c.date_of_birth|nicedate }} <span class="muted small">({{ c.age_text() }})</span></td>
+      <td>{{ c.guardian_name or '' }}</td>
+      <td>{{ status_tag(c) }}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted">No children match.</p>{% endif %}
+</div>
+{% endblock %}

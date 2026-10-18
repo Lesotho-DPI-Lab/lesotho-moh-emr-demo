@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Child Health Record{% endblock %} · Ministry of Health</title>
+  <link rel="icon" type="image/png" href="/static/img/moh_logo.png">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="synthetic-banner" role="note">
+    SYNTHETIC DATA — DEMONSTRATION ONLY. No real child's information is held in this system.
+  </div>
+  <header class="masthead">
+    <a href="/" class="brand">
+      <img src="/static/img/moh_logo.png" alt="Ministry of Health crest: Bophelo">
+      <span class="ministry">Ministry of Health<span>Kingdom of Lesotho</span></span>
+    </a>
+    <div class="app-name">Child Health Record<span>Electronic child health booklet</span></div>
+  </header>
+  <div class="flag-stripe" aria-hidden="true"><span></span><span></span><span></span></div>
+  {% if user %}
+  <nav class="mainnav">
+    <a href="/" {% if request.url.path == '/' %}class="active"{% endif %}>Dashboard</a>
+    <a href="/children" {% if request.url.path.startswith('/children') and request.url.path != '/children/new' %}class="active"{% endif %}>Children</a>
+    <a href="/children/new" {% if request.url.path == '/children/new' %}class="active"{% endif %}>Register child</a>
+    {% if user.role == 'ADMIN' %}
+    <a href="/verifications" {% if request.url.path.startswith('/verifications') %}class="active"{% endif %}>Verification log</a>
+    <a href="/xroad" {% if request.url.path.startswith('/xroad') %}class="active"{% endif %}>X-Road</a>
+    {% endif %}
+    <span class="spacer"></span>
+    <span class="who">{{ user.full_name }} · {{ ROLES[user.role] }}</span>
+    <form method="post" action="/logout" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="link">Sign out</button>
+    </form>
+  </nav>
+  {% endif %}
+  <main>
+    {% for f in flashes %}<div class="flash {{ f.kind }}" role="status">{{ f.message }}</div>{% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer>
+    Ministry of Health · Kingdom of Lesotho · Child EMR demonstrator for the Lesotho Exchange (X-Road) pilot.
+    Synthetic data only.
+  </footer>
+</body>
+</html>

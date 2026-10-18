@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<div class="login-wrap">
+  <div class="card">
+    <h1>Sign in</h1>
+    <p class="muted">Child Health Record · Ministry of Health. For nurses and administrators.</p>
+    {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
+    <form method="post" action="/login" autocomplete="off">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="next" value="{{ next }}">
+      <label>Username<input name="username" required autofocus></label>
+      <label>Password<input name="password" type="password" required></label>
+      <button>Sign in</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_macros.html" import flag, status_tag %}
+{% block title %}Visit · {{ child.full_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ VISIT_TYPES[visit.visit_type] }} · {{ visit.visit_date|nicedate }}</h1>
+    <p><a href="/children/{{ child.emr_number }}">{{ child.full_name }}</a> · aged {{ age }} at the visit · {{ status_tag(child) }}</p>
+  </div>
+  <a class="btn secondary" href="/children/{{ child.emr_number }}">Back to record</a>
+</div>
+{% if visit.danger_sign_list %}
+<div class="error-box"><strong>General danger signs:</strong> {% for d in visit.danger_sign_list %}{{ DANGER_SIGNS[d] }}{% if not loop.last %}; {% endif %}{% endfor %}. Refer urgently.</div>
+{% endif %}
+<div class="grid two">
+  <div class="card">
+    <h2>Observations</h2>
+    <dl class="fields">
+      <dt>Weight</dt><dd>{{ '%g kg'|format(visit.weight_kg) if visit.weight_kg else '—' }}</dd>
+      <dt>Length / height</dt><dd>{{ '%g cm'|format(visit.height_cm) if visit.height_cm else '—' }}</dd>
+      <dt>MUAC</dt><dd>{{ '%g cm'|format(visit.muac_cm) if visit.muac_cm else '—' }} {{ flag(flags.muac) }}</dd>
+      <dt>Head circumference</dt><dd>{{ '%g cm'|format(visit.head_circumference_cm) if visit.head_circumference_cm else '—' }}</dd>
+      <dt>Temperature</dt><dd>{{ '%g °C'|format(visit.temperature_c) if visit.temperature_c else '—' }} {{ flag(flags.temperature) }}</dd>
+      <dt>Respiratory rate</dt><dd>{{ '%d /min'|format(visit.respiratory_rate) if visit.respiratory_rate else '—' }} {{ flag(flags.breathing) }}</dd>
+      <dt>Feeding</dt><dd>{{ visit.feeding|human or '—' }}</dd>
+    </dl>
+  </div>
+  <div class="card">
+    <h2>Care given</h2>
+    <dl class="fields">
+      <dt>Complaint / reason</dt><dd>{{ visit.complaint or '—' }}</dd>
+      <dt>Assessment</dt><dd>{{ visit.assessment or '—' }}</dd>
+      <dt>Plan</dt><dd>{{ visit.plan or '—' }}</dd>
+      <dt>Vaccines</dt><dd>{% for i in visit.immunisations %}{{ SCHEDULE[i.vaccine].name }}{% if i.batch_number %} <span class="muted small">(batch {{ i.batch_number }})</span>{% endif %}{% if not loop.last %}, {% endif %}{% else %}—{% endfor %}</dd>
+      <dt>Supplements</dt><dd>{% if visit.vitamin_a_given %}Vitamin A {% endif %}{% if visit.deworming_given %}Deworming{% endif %}{% if not visit.vitamin_a_given and not visit.deworming_given %}—{% endif %}</dd>
+      <dt>Referred</dt><dd>{{ 'Yes' if visit.referred else 'No' }}</dd>
+      <dt>Next visit</dt><dd>{{ visit.next_visit_date|nicedate or '—' }}</dd>
+      <dt>Recorded by</dt><dd>{{ visit.created_by }} · {{ visit.created_at|localtime }}</dd>
+    </dl>
+  </div>
+</div>
+{% endblock %}
