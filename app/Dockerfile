@@ -7,6 +7,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY emr ./emr
 COPY tests ./tests
+# The app runs as uid 10001: keep the code readable whatever modes the build host had.
+RUN chmod -R a+rX emr tests
 USER emr
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \

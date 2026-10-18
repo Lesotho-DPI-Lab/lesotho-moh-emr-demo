@@ -35,6 +35,14 @@ def test_login_required(client):
     assert r.status_code == 303 and r.headers["location"].startswith("/login")
 
 
+def test_static_assets_served(client):
+    # The crest is on every page; an unreadable file in the image shows only its alt text.
+    r = client.get("/static/img/moh_logo.png")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+    assert r.content.startswith(b"\x89PNG")
+    assert client.get("/static/style.css").status_code == 200
+
+
 def test_wrong_password(client):
     r, _ = login(client, password="wrong-password")
     assert r.status_code == 401
